@@ -10,7 +10,6 @@ import zipfile
 import filetype
 from socketIO_client import SocketIO, BaseNamespace
 
-
 from .__version__ import __version__
 
 
@@ -22,8 +21,8 @@ def set_logger(new_logger):
     logger = new_logger
 
 
-BASE_URL = "https://sharelatex.irisa.fr"
-USER_AGENT = f"python-sharelatex {__version__}"
+BASE_URL = "https://overleaf.simulacra.to"
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:77.0) Gecko/20100101 Firefox/77.0"
 
 
 class SharelatexError(Exception):
@@ -170,8 +169,8 @@ def get_csrf_Token(html_text):
     Returns:
         the csrf token (str) if found in html_text or None if not
     """
-    if "csrfToken" in html_text:
-        return re.search('(?<=csrfToken = ").{36}', html_text).group(0)
+    if "_csrf" in html_text:
+        return re.search('(?<=_csrf" type="hidden" value=").{36}', html_text).group(0)
     else:
         return None
 
@@ -204,14 +203,14 @@ class SyncClient:
         # Retrieve the CSRF token first
         r = self._get(login_url, verify=self.verify)
         self.csrf = get_csrf_Token(r.text)
-        if self.csrf:
+        if self.csrf is not None:
             self.login_data = {
                 "email": username,
                 "password": password,
                 "_csrf": self.csrf,
             }
-            logger.debug(" try login")
-            _r = self._post(login_url, data=self.login_data, verify=self.verify)
+            logger.debug(" try login: {}".format(self.login_data))
+            _r = self._post(login_url, json=self.login_data, headers={"Referer":"{}/login".format(BASE_URL), "Accept":"application/json, text/plain, */*", "Origin":BASE_URL}, verify=self.verify)
             _r.raise_for_status()
             check_error(_r.json())
         else:
@@ -300,7 +299,10 @@ class SyncClient:
         headers = kwargs.get("headers", {})
         headers.update(self.headers)
         kwargs["headers"] = headers
-        r = self.client.request(verb, url, *args, **kwargs)
+        if verb == "POST":
+            r = self.client.post(url, *args, **kwargs)
+        else:
+            r = self.client.request(verb, url, *args, **kwargs)
         r.raise_for_status()
         return r
 
