@@ -276,11 +276,11 @@ def log_options(function):
         "-v",
         "--verbose",
         count=True,
-        default=2,
+        default=0,
         help="verbose level (can be: -v, -vv, -vvv)",
     )(function)
-    function = click.option("-s", "--silent", "verbose", flag_value=0)(function)
     function = click.option("--debug", "-d", "verbose", flag_value=3)(function)
+    function = click.option("-s", "--silent", "verbose", flag_value=0)(function)
     return function
 
 
