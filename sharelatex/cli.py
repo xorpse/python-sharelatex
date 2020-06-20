@@ -11,6 +11,7 @@ from git import Repo
 from git.config import cp
 from zipfile import ZipFile
 import keyring
+import sys
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -71,7 +72,8 @@ class Config:
                 logger.debug(e)
                 c.set_value(section, "init", "")
             except Exception as e:
-                raise e
+                print("ERROR: {}".format(e))
+                sys.exit(-1)
             finally:
                 c.release()
 
@@ -100,7 +102,8 @@ https://gitpython.readthedocs.io/en/stable/reference.html#git.repo.base.Repo.con
                 logger.debug(e)
                 value = default
             except Exception as e:
-                raise e
+                print("ERROR: {}".format(e))
+                sys.exit(-1)
             finally:
                 return value
 
@@ -127,7 +130,8 @@ def get_clean_repo(path=None):
     # Fail if the repo is clean
     if repo.is_dirty(index=True, working_tree=True, untracked_files=True):
         logger.error(repo.git.status())
-        raise Exception("The repo isn't clean.")
+        print("ERROR: The repo is not clean")
+        sys.exit(-1)
     return repo
 
 
@@ -242,7 +246,8 @@ def getClient(repo, base_url, username, password, verify, save_password=None):
                 repo, save_password=save_password, ignore_saved_user_info=True
             )
     if client is None:
-        raise Exception("maximum number of authentication attempts is reached")
+        print("ERROR: maximum number of authentication attempts reached")
+        sys.exit(-1)
     return client
 
 
@@ -346,7 +351,11 @@ def _pull(repo, client, project_id):
     client.download_project(project_id)
     update_ref(repo, message="pre pull")
     git.checkout(active_branch)
-    git.merge(SYNC_BRANCH)
+    try:
+        git.merge(SYNC_BRANCH)
+    except git.exc.GitCommandError as e:
+        print("ERROR: {}".format(e.stdout))
+        sys.exit(-1)
 
 
 @cli.command(help="Compile the remote version of a project")
